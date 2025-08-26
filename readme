@@ -1,0 +1,145 @@
+ Hier ist eine **ausführliche Erklärung** der beiden zentralen Schritte aus deinem Projekt – **Agentenentwicklung** und **Flows & Routing** – inklusive **technischer Umsetzung**, **Begründung**, und **praktischer Anleitung**, basierend auf den Inhalten aus *Kanban.xlsx* und *Use Case für Google Agentic_final.docx*.
+---
+
+## 🧩 Schritt 1: Agentenentwicklung
+
+### 🔹 1. Empfangsagent – Intent Detection via Dialogflow CX
+
+**Ziel:**  
+Erkennung des Kundenanliegens direkt beim Erstkontakt über CES (Chat oder Voice).
+
+**Umsetzung:**
+- Erstelle einen Agent in **Dialogflow CX** mit einem Begrüßungs-Flow (`${FLOW:Begrüßung}`).
+- Trainiere Intents wie:
+  - Produktfrage
+  - Garantieanfrage
+  - Fehlercode
+  - Unklarer Intent
+- Konfiguriere Entity-Erkennung (`@Produkttyp`, `@Seriennummer`, `@Fehlercode`).
+- Route basierend auf Intent zu den jeweiligen Spezialagenten.
+
+**Warum notwendig?**  
+Ermöglicht eine schnelle, automatisierte Klassifikation und Weiterleitung – reduziert Wartezeit und verbessert Kundenerlebnis.
+
+---
+
+### 🔹 2. Informationsagent – Zugriff auf PDF & Confluence via RAG
+
+**Ziel:**  
+Beantwortung einfacher Produkt- und Garantiefragen durch KI.
+
+**Umsetzung:**
+- Implementiere Retrieval-Augmented Generation (RAG):
+  - Verwende einen PDF-Parser (z. B. LangChain + PyMuPDF) für Handbücher.
+  - Nutze die **Confluence API** für Zugriff auf die Support-Wissensdatenbank.
+- Integriere generative KI (z. B. Vertex AI) zur Antwortformulierung.
+- Füge Quellenverweise hinzu.
+- Berechne Confidence Score → bei Unsicherheit: `${FLOW:Rückfragen}` oder `${FLOW:Eskalation}`.
+
+**Warum notwendig?**  
+Ermöglicht skalierbare, transparente und nachvollziehbare Antworten ohne menschliches Eingreifen.
+
+---
+
+### 🔹 3. Analyseagent – Fehlercode-Analyse mit ML & Regelwerk
+
+**Ziel:**  
+Technische Analyse von Fehlercodes und Vorschläge zur Behebung.
+
+**Umsetzung:**
+- Trainiere ein ML-Modell zur Fehlercode-Erkennung.
+- Ergänze mit regelbasierter Logik (z. B. Mapping von `E02` → „Wasserzulauf prüfen“).
+- Suche in Confluence nach bekannten Lösungen.
+- Bei Unsicherheit → `${FLOW:Rückfragen}` → ggf. `${FLOW:Eskalation}`.
+
+**Warum notwendig?**  
+Technische Probleme sind oft komplex – dieser Agent entlastet den Support und liefert präzise Diagnosen.
+
+---
+
+### 🔹 4. Eskalationsagent – Schwellenwertlogik + Jira-Ticket-Erstellung
+
+**Ziel:**  
+Übergabe komplexer Fälle an menschliche Agenten.
+
+**Umsetzung:**
+- Definiere Schwellenwerte für Confidence Score, fehlende Daten, negatives Feedback.
+- Erstelle Jira-Tickets via API:
+  ```http
+  POST /rest/api/2/issue
+  ```
+- Übergabeprotokoll: Chatverlauf, Analyse, Quellen, Parameter.
+
+**Warum notwendig?**  
+Sichert Qualität bei komplexen Fällen und sorgt für vollständige Kontextweitergabe.
+
+---
+
+### 🔹 5. Assistenzagent – Vorschläge & Suche für menschliche Agenten
+
+**Ziel:**  
+Unterstützung menschlicher Agenten im Hintergrund.
+
+**Umsetzung:**
+- Suche in PDF/Confluence nach ähnlichen Fällen.
+- Vorschläge zur Lösung generieren.
+- Jira-Ticket-Erstellung bei fehlenden Informationen.
+
+**Warum notwendig?**  
+Erhöht Effizienz und reduziert Bearbeitungszeit für menschliche Agenten.
+
+---
+
+### 🔹 6. Lernagent – Feedbackauswertung & Confluence-Update
+
+**Ziel:**  
+Kontinuierliche Verbesserung des Systems.
+
+**Umsetzung:**
+- Analysiere Feedback aus CES & Jira.
+- Identifiziere veraltete oder fehlende Inhalte.
+- Erstelle Confluence-Entwürfe via API:
+  ```http
+  POST /wiki/rest/api/content
+  ```
+- Review durch Content-Team.
+
+**Warum notwendig?**  
+Sichert langfristige Qualität und Aktualität der Wissensbasis.
+
+---
+
+## 🧩 Schritt 2: Flows & Routing
+
+### 🔹 Flows in CES definieren
+
+#### 1. Begrüßung (`${FLOW:Begrüßung}`)
+- Begrüßung basierend auf Tageszeit
+- Vorstellung des Systems
+- Übergabe an Intent Detection
+
+#### 2. Rückfragen (`${FLOW:Rückfragen}`)
+- Klärung bei unklarem Intent oder fehlenden Parametern
+- Rückleitung an Informations- oder Analyseagent
+
+#### 3. Eskalation (`${FLOW:Eskalation}`)
+- Übergabe an menschlichen Agenten
+- Jira-Ticket-Erstellung
+- Kontextweitergabe
+
+#### 4. Monitoring
+- Logging aller Interaktionen
+- Trigger für Lernagent
+
+---
+
+### 🔹 Routing-Logik gemäß Intent & Confidence Score
+
+| Intent              | Agent              | Bei Unsicherheit → Rückfragen | Bei Scheitern → Eskalation |
+|---------------------|--------------------|-------------------------------|-----------------------------|
+| Produktfrage        | Informationsagent  | ✅                             | ✅                           |
+| Garantieanfrage     | Informationsagent  | ✅                             | ✅                           |
+| Fehlercode          | Analyseagent       | ✅                             | ✅                           |
+| Unklarer Intent     | Empfangsagent      | —                              | —                            |
+
+---
