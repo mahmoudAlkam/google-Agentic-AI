@@ -1,135 +1,107 @@
- Hier ist eine **ausführliche Erklärung** der beiden zentralen Schritte aus deinem Projekt – **Agentenentwicklung** und **Flows & Routing** – inklusive **technischer Umsetzung**, **Begründung**, und **praktischer Anleitung**, basierend auf den Inhalten aus *Kanban.xlsx* und *Use Case für Google Agentic_final.docx*.
----
 
-## 🧩 Schritt 1: Agentenentwicklung
+## 🧩 1. Agentenentwicklung (angepasst für PDF-only Use Case)
 
-### 🔹 1. Empfangsagent – Intent Detection via Dialogflow CX
+### 🔹 Empfangsagent – Intent Detection via Dialogflow CX
 
 **Ziel:**  
-Erkennung des Kundenanliegens direkt beim Erstkontakt über CES (Chat oder Voice).
+Erkennung des Kundenanliegens beim Erstkontakt über CES (Chat oder Voice).
 
-**Umsetzung:**
-- Erstelle einen Agent in **Dialogflow CX** mit einem Begrüßungs-Flow (`${FLOW:Begrüßung}`).
-- Trainiere Intents wie:
-  - Produktfrage
-  - Garantieanfrage
-  - Fehlercode
-  - Unklarer Intent
-- Konfiguriere Entity-Erkennung (`@Produkttyp`, `@Seriennummer`, `@Fehlercode`).
-- Route basierend auf Intent zu den jeweiligen Spezialagenten.
-
-**Warum notwendig?**  
-Ermöglicht eine schnelle, automatisierte Klassifikation und Weiterleitung – reduziert Wartezeit und verbessert Kundenerlebnis.
+**Umsetzungsschritte:**
+1. Erstelle einen Agent in **Dialogflow CX**.
+2. Definiere Intents:
+   - Produktfrage
+   - Garantieanfrage
+   - Fehlercode
+   - Unklarer Intent
+3. Konfiguriere Entity-Erkennung:
+   - `@Produkttyp`
+   - `@Seriennummer`
+   - `@Fehlercode`
+4. Route basierend auf Intent zu den jeweiligen Spezialagenten.
 
 ---
 
-### 🔹 2. Informationsagent – Zugriff auf PDF & Confluence via RAG
+### 🔹 Informationsagent – Zugriff auf PDF via RAG
 
 **Ziel:**  
-Beantwortung einfacher Produkt- und Garantiefragen durch KI.
+Beantwortung von Produkt- und Garantiefragen durch KI mit PDF als Datenquelle.
 
-**Umsetzung:**
-- Implementiere Retrieval-Augmented Generation (RAG):
-  - Verwende einen PDF-Parser (z. B. LangChain + PyMuPDF) für Handbücher.
-  - Nutze die **Confluence API** für Zugriff auf die Support-Wissensdatenbank.
-- Integriere generative KI (z. B. Vertex AI) zur Antwortformulierung.
-- Füge Quellenverweise hinzu.
-- Berechne Confidence Score → bei Unsicherheit: `${FLOW:Rückfragen}` oder `${FLOW:Eskalation}`.
-
-**Warum notwendig?**  
-Ermöglicht skalierbare, transparente und nachvollziehbare Antworten ohne menschliches Eingreifen.
+**Umsetzungsschritte:**
+1. Verwende einen **PDF-Parser** (z. B. LangChain + PyMuPDF oder PDFMiner).
+2. Implementiere **Retrieval-Augmented Generation (RAG)**:
+   - Extrahiere relevante Abschnitte aus PDF basierend auf Anfrage.
+   - Übergib die extrahierten Inhalte an ein generatives KI-Modell (z. B. Vertex AI).
+3. Generiere Antwort inkl. Quellenverweis (z. B. Seitenzahl).
+4. Berechne Confidence Score (siehe unten).
+5. Bei Unsicherheit → `${FLOW:Rückfragen}` → ggf. `${FLOW:Eskalation}`
 
 ---
 
-### 🔹 3. Analyseagent – Fehlercode-Analyse mit ML & Regelwerk
+### 🔹 Analyseagent – Fehlercode-Analyse mit Regelwerk
 
 **Ziel:**  
-Technische Analyse von Fehlercodes und Vorschläge zur Behebung.
+Technische Analyse von Fehlercodes auf Basis von PDF-Inhalten.
 
-**Umsetzung:**
-- Trainiere ein ML-Modell zur Fehlercode-Erkennung.
-- Ergänze mit regelbasierter Logik (z. B. Mapping von `E02` → „Wasserzulauf prüfen“).
-- Suche in Confluence nach bekannten Lösungen.
-- Bei Unsicherheit → `${FLOW:Rückfragen}` → ggf. `${FLOW:Eskalation}`.
-
-**Warum notwendig?**  
-Technische Probleme sind oft komplex – dieser Agent entlastet den Support und liefert präzise Diagnosen.
+**Umsetzungsschritte:**
+1. Definiere Mapping-Regeln: z. B. `E02` → „Wasserzulauf prüfen“.
+2. Suche im PDF nach Fehlercode-Abschnitten.
+3. Extrahiere Lösungsvorschläge.
+4. Generiere Antwort mit KI.
+5. Confidence Score prüfen → ggf. Rückfrage oder Eskalation.
 
 ---
 
-### 🔹 4. Eskalationsagent – Schwellenwertlogik + Jira-Ticket-Erstellung
+### 🔹 Eskalationsagent – Schwellenwertlogik + Jira-Ticket-Erstellung
 
 **Ziel:**  
 Übergabe komplexer Fälle an menschliche Agenten.
 
-**Umsetzung:**
-- Definiere Schwellenwerte für Confidence Score, fehlende Daten, negatives Feedback.
-- Erstelle Jira-Tickets via API:
-  ```http
-  POST /rest/api/2/issue
-  ```
-- Übergabeprotokoll: Chatverlauf, Analyse, Quellen, Parameter.
-
-**Warum notwendig?**  
-Sichert Qualität bei komplexen Fällen und sorgt für vollständige Kontextweitergabe.
+**Umsetzungsschritte:**
+1. Definiere Schwellenwert für Confidence Score (z. B. `< 0.6`).
+2. Bei Trigger → erst `${FLOW:Rückfragen}`, dann `${FLOW:Eskalation}`.
+3. Erstelle Jira-Ticket via API mit:
+   - Chatverlauf
+   - Anfrageparameter
+   - PDF-Auszüge
+   - Confidence Score
 
 ---
 
-### 🔹 5. Assistenzagent – Vorschläge & Suche für menschliche Agenten
+### 🔹 Assistenzagent – Vorschläge & Suche für menschliche Agenten
 
 **Ziel:**  
-Unterstützung menschlicher Agenten im Hintergrund.
+Unterstützung menschlicher Agenten mit PDF-Suche und Vorschlägen.
 
-**Umsetzung:**
-- Suche in PDF/Confluence nach ähnlichen Fällen.
-- Vorschläge zur Lösung generieren.
-- Jira-Ticket-Erstellung bei fehlenden Informationen.
-
-**Warum notwendig?**  
-Erhöht Effizienz und reduziert Bearbeitungszeit für menschliche Agenten.
+**Umsetzungsschritte:**
+1. Implementiere semantische Suche in PDF.
+2. Generiere Vorschläge basierend auf ähnlichen Fällen.
+3. Ermögliche manuelle Ticket-Erstellung bei fehlenden Informationen.
 
 ---
 
-### 🔹 6. Lernagent – Feedbackauswertung & Confluence-Update
+### 🔹 Lernagent – Feedbackauswertung (ohne Confluence)
 
 **Ziel:**  
-Kontinuierliche Verbesserung des Systems.
+Systemverbesserung durch Feedbackanalyse.
 
-**Umsetzung:**
-- Analysiere Feedback aus CES & Jira.
-- Identifiziere veraltete oder fehlende Inhalte.
-- Erstelle Confluence-Entwürfe via API:
-  ```http
-  POST /wiki/rest/api/content
-  ```
-- Review durch Content-Team.
-
-**Warum notwendig?**  
-Sichert langfristige Qualität und Aktualität der Wissensbasis.
+**Umsetzungsschritte:**
+1. Analysiere Eskalationen und negatives Feedback.
+2. Markiere PDF-Stellen, die unklar oder unvollständig sind.
+3. Erstelle Vorschläge zur PDF-Ergänzung (z. B. neue Version).
+4. Übergabe an Content-Team zur PDF-Pflege.
 
 ---
 
-## 🧩 Schritt 2: Flows & Routing
+## 🧩 2. Flows & Routing (angepasst)
 
 ### 🔹 Flows in CES definieren
 
-#### 1. Begrüßung (`${FLOW:Begrüßung}`)
-- Begrüßung basierend auf Tageszeit
-- Vorstellung des Systems
-- Übergabe an Intent Detection
-
-#### 2. Rückfragen (`${FLOW:Rückfragen}`)
-- Klärung bei unklarem Intent oder fehlenden Parametern
-- Rückleitung an Informations- oder Analyseagent
-
-#### 3. Eskalation (`${FLOW:Eskalation}`)
-- Übergabe an menschlichen Agenten
-- Jira-Ticket-Erstellung
-- Kontextweitergabe
-
-#### 4. Monitoring
-- Logging aller Interaktionen
-- Trigger für Lernagent
+| Flow            | Zweck                                      |
+|-----------------|---------------------------------------------|
+| `${FLOW:Begrüßung}` | Begrüßung, Intent-Erkennung starten         |
+| `${FLOW:Rückfragen}` | Klärung bei Unsicherheit oder fehlenden Parametern |
+| `${FLOW:Eskalation}` | Übergabe an menschlichen Agenten via Jira |
+| Monitoring       | Logging für Lernagent und Reporting        |
 
 ---
 
@@ -143,3 +115,21 @@ Sichert langfristige Qualität und Aktualität der Wissensbasis.
 | Unklarer Intent     | Empfangsagent      | —                              | —                            |
 
 ---
+
+## 🧠 Confidence Score berechnen (PDF-only)
+
+**Empfohlene Methode:**  
+Verwende semantische Ähnlichkeit zwischen Anfrage und extrahiertem PDF-Abschnitt.
+
+```python
+from sklearn.metrics.pairwise import cosine_similarity
+
+score = cosine_similarity([frage_embedding], [pdf_abschnitt_embedding])[0][0]
+```
+
+- `< 0.6` → Rückfrage
+- `< 0.4` nach Rückfrage → Eskalation
+
+---
+
+Wenn du möchtest, kann ich dir ein Beispielskript für die PDF-Suche, Confidence Score Berechnung oder Jira-Integration erstellen. Sag einfach Bescheid!
